@@ -34,6 +34,7 @@ export function checkDataType(value: string | number | bigint | any): dataTypes 
 }
 
 export type dataTypes = 'string' | 'DateTime' | 'bool' | 'int' | 'long' | 'double' | 'object' | 'list';
+
 export type ObjectMember = {
     name: string;
     dataType: dataTypes;

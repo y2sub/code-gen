@@ -1,10 +1,33 @@
 <script lang="ts">
 	import Menu from '$lib/Menu.svelte';
+	import ObjectMemberPresenter from '$lib/ObjectMemberPresenter.svelte';
+	import PropertyEntryInput from '$lib/PropertyEntryInput.svelte';
+	import PropertyEntryDropDown from '$lib/PropertyEntryDropDown.svelte';
 	import { checkDataType, maxInt32, revive, type ObjectMember } from '$lib/json-helper';
+	import { generateComplexProperty } from '$lib/code-generator';
+
 	let isJsonValid = true;
 	let jsonText: string = '';
+	let baseObject: ObjectMember | undefined = undefined;
+	let contextObject: ObjectMember | undefined = undefined;
+	let contextObjectCode: string | undefined = undefined;
+
 	let validationErrorText: string | undefined = undefined;
 	let diag: HTMLDialogElement;
+	let header: HTMLHeadElement;
+	let headerHeight = 0;
+	$: {
+		if (header) {
+			headerHeight = header.clientHeight + 1;
+		} else {
+			headerHeight = 0;
+		}
+		if (!contextObject) {
+			contextObjectCode = undefined;
+		} else {
+			contextObjectCode = generateComplexProperty(contextObject);
+		}
+	}
 
 	function showDialog() {
 		isJsonValid = true;
@@ -45,7 +68,7 @@
 			return;
 		}
 
-		let baseObject: ObjectMember = {
+		baseObject = {
 			name: 'BaseObject',
 			nullable: false,
 			dataType: 'object',
@@ -55,8 +78,7 @@
 		};
 		let members = getObjectProperties(jsonObject, 1);
 		baseObject.members = members;
-
-		console.log(baseObject);
+		diag.close();
 	}
 
 	function getObjectProperties(obj: any | undefined, indent: number) {
@@ -85,7 +107,7 @@
 				case 'bigint':
 				case 'number':
 				case 'string':
-					objectMember.dataType = checkDataType(value);					
+					objectMember.dataType = checkDataType(value);
 					break;
 				case 'boolean':
 					objectMember.dataType = 'bool';
@@ -103,10 +125,15 @@
 		}
 		return objectMembers;
 	}
+
+	function handleSelectionChanged(event: CustomEvent) {
+		let property = event.detail.property as ObjectMember;
+		contextObject = property;
+	}
 </script>
 
-<div class="h-screen bg-black text-neutral-300">
-	<header class=" pt-4 pb-4 border-b border-b-neutral-600 flex">
+<div class="h-screen bg-black text-neutral-300 relative">
+	<header bind:this={header} class="pt-4 pb-4 border-b border-b-neutral-600 flex">
 		<div class="mx-auto">
 			<Menu>
 				<span slot="title">
@@ -119,15 +146,104 @@
                     hover:bg-sky-700 hover:text-sky-50"
 				>
 					<i class="bi bi-upload"></i>
-					<span>From File </span>
+					<span> From File </span>
 				</button>
 				<button type="button" on:click={showDialog}>
 					<i class="bi bi-braces" />
-					<span> Paste Json </span>
+					<span> From JSON String</span>
 				</button>
 			</Menu>
 		</div>
 	</header>
+	{#if !baseObject}
+		<div class="flex px-2 py-4 md:py-10">
+			<div
+				class="border border-slate-500 w-full md:w-1/2 rounded mx-auto
+			backdrop-opacity-15 bg-slate-900 text-blue-400 py-4
+			ring ring-slate-500/30
+			"
+			>
+				<div class=" my-4 p-2 text-center">No JSON file loaded....</div>
+				<div class="text-center">
+					<div
+						class="bg-gradient-to-br from-blue-100 to-indigo-200 my-4 inline-block rounded border
+					border-slate-600 ring ring-blue-400/20 py-5 px-2
+					text-blue-700
+					-rotate-12"
+					>
+						<i class="bi bi-braces text-7xl"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+	{:else}
+		<div
+			class="grid grid-cols-2 gap-x-4 absolute left-0 right-0 bottom-0 p-2"
+			style="top: {headerHeight}px;"
+		>
+			<div
+				class="overflow-y-scroll border border-slate-500 rounded bg-slate-900
+			
+			"
+			>
+				<ObjectMemberPresenter property={baseObject} on:selectionchanged={handleSelectionChanged} />
+			</div>
+
+			<div class="overflow-y-scroll border border-slate-500 rounded bg-slate-900">
+				{#if contextObject}
+					<div class="flex-grow">
+						<PropertyEntryInput bind:value={contextObject.name} label="Name" />
+
+						<PropertyEntryDropDown
+							disabled={contextObject === baseObject}
+							label="Data Type"
+							bind:value={contextObject.dataType}
+							on:change={() => (baseObject = baseObject)}
+						>
+							<option value="string">String</option>
+							<option value="DateTime">Date</option>
+							<option value="bool">Boolean</option>
+							<option value="int">Integer</option>
+							<option value="long">Long</option>
+							<option value="double">Double</option>
+							<option value="object">Object</option>
+						</PropertyEntryDropDown>
+						<PropertyEntryDropDown
+							label="Access Modifier"
+							bind:value={contextObject.accessModifier}
+						>
+							<option value="public">Public</option>
+							<option value="private">Private</option>
+						</PropertyEntryDropDown>
+						<div class="px-2 border-b border-b-slate-500 text-sm py-[0.15rem]">
+							<label class="space-x-1">
+								<input
+									type="checkbox"
+									bind:checked={contextObject.nullable}
+									disabled={contextObject === baseObject}
+								/>
+								<span> Nullable </span>
+							</label>
+						</div>
+						<div class="p-2">
+							<div class="h-10">
+								<button
+									type="button"
+									on:click={() => navigator.clipboard.writeText(contextObjectCode ?? '')}
+								>
+									<i class="bi bi-clipboard"></i>
+									<span> Copy Code </span>
+								</button>
+							</div>
+							<code class="block whitespace-pre">
+								{contextObjectCode}
+							</code>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
 </div>
 
 <dialog
