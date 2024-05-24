@@ -5,6 +5,14 @@
 	import PropertyEntryDropDown from '$lib/PropertyEntryDropDown.svelte';
 	import { checkDataType, maxInt32, revive, type ObjectMember } from '$lib/json-helper';
 	import { generateComplexProperty } from '$lib/code-generator';
+	import MenuButton from '$lib/MenuButton.svelte';
+	import {
+		ColorTheme,
+		fireErrorToast,
+		fireSuccessToast,
+		fireSweetAlert,
+		fireToast
+	} from '$lib/swal_helper';
 
 	let isJsonValid = true;
 	let jsonText: string = '';
@@ -29,10 +37,89 @@
 		}
 	}
 
+	async function handleFileChanged(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) {
+			return;
+		}
+		const file = input.files[0];
+		const json = await file.text();
+		const result = parseJson(json);
+		if (result.isJsonValid) {
+			fireSuccessToast('Json object created');
+		} else {
+			fireErrorToast(result.validationErrorText);
+		}
+
+		input.value = '';
+	}
+
+	function clearJson() {
+		contextObject = undefined;
+		baseObject = undefined;
+		jsonText = '';
+		fireToast('Json object cleared', 'success');
+	}
+
+	function parseJson(jsonString: string) {
+		jsonString = jsonString.trim();
+
+		let jsonObject: any | undefined = undefined;
+		try {
+			jsonObject = JSON.parse(jsonString, revive);
+			if (typeof jsonObject !== 'object') {
+				throw 'Invalid JSON object';
+			}
+			//If it is an array take the first element
+			// return invalid if array is empty
+			if (Array.isArray(jsonObject)) {
+				if (jsonObject.length === 0) {
+					return {
+						isJsonValid: false,
+						validationErrorText: 'Could not parse empty array'
+					};
+				}
+				jsonObject = jsonObject[0];
+			}
+		} catch (e) {
+			return {
+				isJsonValid: false,
+				validationErrorText: 'Could not parse text into a valid JSON object'
+			};
+		}
+
+		if (Array.isArray(jsonObject)) {
+		}
+
+		baseObject = {
+			name: 'BaseObject',
+			nullable: false,
+			dataType: 'object',
+			accessModifier: 'public',
+			members: [],
+			indent: 1
+		};
+		let members = getObjectProperties(jsonObject, 1);
+		baseObject.members = members;
+		return {
+			isJsonValid: true,
+			validationErrorText: ''
+		};
+	}
+
 	function showDialog() {
 		isJsonValid = true;
 		validationErrorText = '';
+		diag.classList.add('scale-0');
 		diag.showModal();
+		diag.classList.remove('scale-0');
+		// diag.classList.add('scale-100')
+	}
+	function closeDialog() {
+		diag.classList.add('scale-0');
+		setTimeout(() => {
+			diag.close();
+		}, 500);
 	}
 
 	function handleDialogSubmitted(event: Event) {
@@ -78,7 +165,7 @@
 		};
 		let members = getObjectProperties(jsonObject, 1);
 		baseObject.members = members;
-		diag.close();
+		closeDialog();
 	}
 
 	function getObjectProperties(obj: any | undefined, indent: number) {
@@ -132,9 +219,9 @@
 	}
 </script>
 
-<div class="h-screen bg-black text-neutral-300 relative">
-	<header bind:this={header} class="pt-4 pb-4 border-b border-b-neutral-600 flex">
-		<div class="mx-auto">
+<div class="h-screen bg-slate-100 relative">
+	<header bind:this={header} class=" border-b border-b-neutral-400 shadow-md flex bg-white h-20">
+		<div class="mx-auto my-auto flex space-x-2">
 			<Menu>
 				<span slot="title">
 					<span>Load Json</span>
@@ -153,26 +240,63 @@
 					<span> From JSON String</span>
 				</button>
 			</Menu>
+			<MenuButton on:click={clearJson} buttonStyle="red" disabled={!baseObject}>
+				<i class="bi bi-trash"></i>
+				<span> Reset </span></MenuButton
+			>
 		</div>
 	</header>
+	<input
+		type="file"
+		id="jsonUploadInput"
+		class="hidden"
+		accept=".txt,.json"
+		on:change={handleFileChanged}
+	/>
 	{#if !baseObject}
 		<div class="flex px-2 py-4 md:py-10">
 			<div
-				class="border border-slate-500 w-full md:w-1/2 rounded mx-auto
-			backdrop-opacity-15 bg-slate-900 text-blue-400 py-4
-			ring ring-slate-500/30
+				class="border-2 border-slate-500 w-full md:w-1/2 mx-auto
+			py-4 text-slate-900
+			rounded-lg shadow-xl bg-gradient-to-br from-neutral-50 to-neutral-200
+			
 			"
 			>
-				<div class=" my-4 p-2 text-center">No JSON file loaded....</div>
+				<div class=" my-4 p-2 text-center font-bold text-2xl">No JSON file loaded....</div>
 				<div class="text-center">
-					<div
-						class="bg-gradient-to-br from-blue-100 to-indigo-200 my-4 inline-block rounded border
-					border-slate-600 ring ring-blue-400/20 py-5 px-2
-					text-blue-700
-					-rotate-12"
-					>
-						<i class="bi bi-braces text-7xl"></i>
+					<div class="text-9xl -rotate-12 text-slate-700">
+						<label for="jsonUploadInput" class="cursor-pointer">
+							<i
+								class="bi bi-file-earmark-code
+									scale-100
+									hover:scale-125 transition-all ease-in-out duration-500 hover:text-blue-800
+									inline-block"
+							></i>
+						</label>
 					</div>
+				</div>
+				<div class="text-center my-4 pt-8 grid grid-cols-2 gap-4 px-4">
+					<button
+						type="button"
+						on:click={showDialog}
+						class="space-x-1 bg-slate-950 text-slate-50 px-3 py-2 rounded-lg
+						hover:bg-slate-800 active:ring ring-slate-950/20
+						focus:ring focus:outline-none
+						"
+					>
+						<i class="bi bi-braces"></i>
+						From JSON String
+					</button>
+					<label
+						for="jsonUploadInput"
+						class="space-x-1 cursor-pointer
+								focus:ring focus:outline-none bg-blue-800 text-blue-50 px-3 py-2 rounded-lg
+								hover:bg-blue-700 active:ring ring-blue-800/20
+								"
+					>
+						<i class="bi bi-upload"></i>
+						<span>Load From File</span>
+					</label>
 				</div>
 			</div>
 		</div>
@@ -182,14 +306,13 @@
 			style="top: {headerHeight}px;"
 		>
 			<div
-				class="overflow-y-scroll border border-slate-500 rounded bg-slate-900
-			
+				class="overflow-y-scroll border border-slate-400 rounded
 			"
 			>
 				<ObjectMemberPresenter property={baseObject} on:selectionchanged={handleSelectionChanged} />
 			</div>
 
-			<div class="overflow-y-scroll border border-slate-500 rounded bg-slate-900">
+			<div class="overflow-y-scroll border border-slate-500 rounded">
 				{#if contextObject}
 					<div class="flex-grow">
 						<PropertyEntryInput bind:value={contextObject.name} label="Name" />
@@ -248,28 +371,38 @@
 
 <dialog
 	bind:this={diag}
-	class="border border-neutral-500 p-2 w-full md:w-3/4 lg:w-2/3 xl:w-1/2 rounded shadow-lg
-     backdrop:bg-white/20 bg-neutral-800 text-neutral-100"
+	class="p-2 w-full md:w-3/4 lg:w-2/3 xl:w-1/2 rounded-xl shadow-lg
+		   text-neutral-800 dark:text-neutral-100
+			border border-neutral-300 dark:border-neutral-500
+			backdrop:bg-black/20 dark:backdrop:bg-white/20
+			bg-neutral-100 dark:bg-neutral-800
+			transition-all ease-in-out duration-500
+			"
 >
 	<form method="dialog" class="" on:submit={handleDialogSubmitted} novalidate>
-		<h3 class="py-2 pb-4 border-b border-b-neutral-500 text-2xl space-x-1">
+		<h3 class="py-2 pb-4 border-b border-b-neutral-500 text-2xl font-bold space-x-1">
 			<i class="bi bi-braces" />
-			<span> Paste Json </span>
+			<span> Load JSON </span>
 		</h3>
 		<div class="grid gap-2 my-4">
 			<textarea
 				aria-invalid={!isJsonValid}
 				name="json"
-				rows="7"
-				class="focus:outline-none border border-neutral-500 bg-black px-1 py-1 rounded
-                ring-sky-600/20 aria-[invalid='true']:ring-pink-600/20 aria-[invalid='true']:border-pink-600
+				rows="10"
+				placeholder="Paste your JSON object here"
+				class="px-1 py-1 rounded focus:outline-none border
+					   border-neutral-500
+					   focus:border-blue-500
+					   bg-white dark:bg-black
+				 
+                ring-sky-600/20 aria-[invalid='true']:ring-red-600/20 aria-[invalid='true']:border-red-600
                 focus:ring peer
                 "
 				bind:value={jsonText}
 			/>
 
 			<div class="text-center invisible peer-aria-[invalid='true']:visible text-sm">
-				<span class=" text-amber-500 space-x-2">
+				<span class="text-red-600 dark:text-amber-600 space-x-2">
 					<i class="bi bi-exclamation-triangle-fill"></i>
 					{validationErrorText}
 				</span>
@@ -278,19 +411,27 @@
 		<div class="my-4 grid grid-cols-2 gap-x-2">
 			<button
 				type="submit"
-				class="px-2 py-1.5 rounded
-            transition-all ease-in-out duration-300 focus:outline-none focus:ring outline-none
-            bg-sky-600 hover:bg-sky-700 ring-sky-500/20"
+				class="space-x-1 cursor-pointer outline-none focus:outline-none
+				
+				focus:ring bg-blue-800 text-blue-50 px-3 py-2 rounded-lg
+				hover:bg-blue-700 active:ring ring-blue-800/20
+				transition-all ease-in-out duration-300
+				"
 			>
-				Load Json
+				<span>Load JSON</span>
 			</button>
 			<button
 				type="button"
-				class="px-2 py-1.5 rounded
-            transition-all ease-in-out duration-300 focus:outline-none focus:ring outline-none
-            bg-neutral-500 hover:bg-neutral-600 ring-neutral-500/20
+				class="space-x-1 cursor-pointer outline-none focus:outline-none
+					px-3 py-2 rounded-lg
+					bg-slate-950 text-slate-50 hover:bg-slate-800 active:ring
+					focus:ring ring-slate-500/20
+
+
+				 
+				 transition-all ease-in-out duration-300
             "
-				on:click={() => diag.close()}>Cancel</button
+				on:click={closeDialog}>Cancel</button
 			>
 		</div>
 	</form>
