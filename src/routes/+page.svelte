@@ -306,13 +306,13 @@
 			style="top: {headerHeight}px;"
 		>
 			<div
-				class="overflow-y-scroll border border-slate-400 rounded
+				class="overflow-y-scroll border border-slate-400 rounded-lg py-1
 			"
 			>
 				<ObjectMemberPresenter property={baseObject} on:selectionchanged={handleSelectionChanged} />
 			</div>
 
-			<div class="overflow-y-scroll border border-slate-500 rounded">
+			<div class="overflow-y-scroll border border-slate-400 rounded-lg py-1">
 				{#if contextObject}
 					<div class="flex-grow">
 						<PropertyEntryInput bind:value={contextObject.name} label="Name" />

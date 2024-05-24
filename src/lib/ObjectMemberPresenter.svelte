@@ -40,8 +40,8 @@
 			bind:this={button}
 			type="button"
 			class=" flex flex-grow space-x-2 py-2 text-blue-500 hover:bg-blue-500/20
-            transition-colors ease-in-out duration-300 active:bg-blue-700 active:text-blue-200
-            data-[selected='true']:bg-blue-700 data-[selected='true']:text-blue-200
+            transition-colors ease-in-out duration-300 active:bg-blue-700 active:text-blue-50
+            data-[selected='true']:bg-blue-700 data-[selected='true']:text-blue-50
             "
 			on:click={handleButtonClicked}
 		>
@@ -62,7 +62,7 @@
 		class="grid transition-all ease-in-out duration-300 "
 		style="grid-template-rows: {isExpanded ? '1fr' : '0fr'};"
 	>
-		<div class="overflow-hidden {isExpanded ? "border-b border-b-slate-500" :"border-b-0"}">
+		<div class="overflow-hidden {isExpanded ? "border-b border-b-slate-300" :"border-b-0"}">
 			{#if property.members}
 				{#each property.members as child (child.name)}
 					<svelte:self property={child} on:selectionchanged />
