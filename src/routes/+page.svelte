@@ -302,17 +302,21 @@
 		</div>
 	{:else}
 		<div
-			class="grid grid-cols-2 gap-x-4 absolute left-0 right-0 bottom-0 p-2"
+			class="grid grid-cols-2 gap-x-2 md:gap-x-4 lg:gap-x-8 xl:gap-x-16  absolute left-0 right-0 bottom-0 p-2 md:px-4 lg:px-16 xl:px-20"
 			style="top: {headerHeight}px;"
 		>
 			<div
-				class="overflow-y-scroll border border-slate-400 rounded-lg py-1
+				class="overflow-y-scroll border border-slate-300 shadow-sm
+				bg-white
+
 			"
 			>
 				<ObjectMemberPresenter property={baseObject} on:selectionchanged={handleSelectionChanged} />
 			</div>
 
-			<div class="overflow-y-scroll border border-slate-400 rounded-lg py-1">
+			<div class="overflow-y-scroll border border-slate-300 shadow-sm
+			bg-white			
+			">
 				{#if contextObject}
 					<div class="flex-grow">
 						<PropertyEntryInput bind:value={contextObject.name} label="Name" />
