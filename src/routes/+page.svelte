@@ -13,6 +13,7 @@
 		fireSweetAlert,
 		fireToast
 	} from '$lib/swal_helper';
+	import NavigationMenu from '$lib/NavigationMenu.svelte';
 
 	let isJsonValid = true;
 	let jsonText: string = '';
@@ -220,7 +221,8 @@
 </script>
 
 <div class="h-screen bg-slate-100 relative">
-	<header bind:this={header} class=" border-b border-b-neutral-400 shadow-md flex bg-white h-20">
+	<header bind:this={header} class=" border-b border-b-neutral-400 shadow-md flex bg-white h-20 px-2 md:px-4 lg:px-16 xl:px-20">
+		<NavigationMenu/>
 		<div class="mx-auto my-auto flex space-x-2">
 			<Menu>
 				<span slot="title">
