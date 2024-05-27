@@ -220,7 +220,7 @@
 	>
 		<NavigationMenu bind:language />
 		<div class="mx-auto my-auto flex space-x-2">
-			<Menu>
+			<!-- <Menu>
 				<span slot="title">
 					<span>Load Json</span>
 				</span>
@@ -237,7 +237,7 @@
 					<i class="bi bi-braces" />
 					<span> From JSON String</span>
 				</button>
-			</Menu>
+			</Menu> -->
 			<MenuButton on:click={clearJson} buttonStyle="red" disabled={!baseObject}>
 				<i class="bi bi-trash"></i>
 				<span> Reset </span></MenuButton
