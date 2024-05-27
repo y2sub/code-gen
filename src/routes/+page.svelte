@@ -4,7 +4,7 @@
 	import PropertyEntryInput from '$lib/PropertyEntryInput.svelte';
 	import PropertyEntryDropDown from '$lib/PropertyEntryDropDown.svelte';
 	import { checkDataType, maxInt32, revive, type ObjectMember } from '$lib/json-helper';
-	import { generateComplexProperty } from '$lib/code-generator';
+	import { generateComplexProperty, type SupportedLanguages } from '$lib/code-generator';
 	import MenuButton from '$lib/MenuButton.svelte';
 	import {
 		ColorTheme,
@@ -14,12 +14,16 @@
 		fireToast
 	} from '$lib/swal_helper';
 	import NavigationMenu from '$lib/NavigationMenu.svelte';
+	import DropDownButton from '$lib/DropDownButton.svelte';
+	import PropertyEntryCheckBox from '$lib/PropertyEntryCheckBox.svelte';
+	import CodePresenter from '$lib/CodePresenter.svelte';
 
+	let language: SupportedLanguages = 'CS';
 	let isJsonValid = true;
 	let jsonText: string = '';
 	let baseObject: ObjectMember | undefined = undefined;
 	let contextObject: ObjectMember | undefined = undefined;
-	let contextObjectCode: string | undefined = undefined;
+	let baseObjectCode: string | undefined = undefined;
 
 	let validationErrorText: string | undefined = undefined;
 	let diag: HTMLDialogElement;
@@ -31,10 +35,17 @@
 		} else {
 			headerHeight = 0;
 		}
-		if (!contextObject) {
-			contextObjectCode = undefined;
+		if (language) {
+			handleBaseObjectChanged();
+		}
+	}
+
+	function handleBaseObjectChanged() {
+		baseObject = baseObject;
+		if (!baseObject) {
+			baseObjectCode = '';
 		} else {
-			contextObjectCode = generateComplexProperty(contextObject);
+			baseObjectCode = generateComplexProperty(baseObject, language);
 		}
 	}
 
@@ -102,6 +113,7 @@
 		};
 		let members = getObjectProperties(jsonObject, 1);
 		baseObject.members = members;
+		handleBaseObjectChanged();
 		return {
 			isJsonValid: true,
 			validationErrorText: ''
@@ -114,7 +126,6 @@
 		diag.classList.add('scale-0');
 		diag.showModal();
 		diag.classList.remove('scale-0');
-		// diag.classList.add('scale-100')
 	}
 	function closeDialog() {
 		diag.classList.add('scale-0');
@@ -129,13 +140,12 @@
 		event.stopPropagation();
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
-		isJsonValid = true;
+
 		jsonText = jsonText.trim();
 
-		let isValid = jsonText !== '';
+		isJsonValid = jsonText !== '';
 
-		if (!isValid) {
-			isJsonValid = false;
+		if (!isJsonValid) {
 			validationErrorText = 'Please enter a valid, non empty JSON object';
 			return;
 		}
@@ -143,30 +153,13 @@
 		let jsonString: string = data.get('json') as string;
 		jsonString = jsonString.trim();
 
-		let jsonObject: any | undefined = undefined;
-		try {
-			jsonObject = JSON.parse(jsonString, revive);
-			if (typeof jsonObject !== 'object') {
-				throw 'Invalid JSON object';
-			}
-		} catch (e) {
-			isValid = false;
+		const result = parseJson(jsonString);
+		if (result.isJsonValid) {
+			closeDialog();
+		} else {
 			isJsonValid = false;
 			validationErrorText = 'Could not parse text into a valid JSON object';
-			return;
 		}
-
-		baseObject = {
-			name: 'BaseObject',
-			nullable: false,
-			dataType: 'object',
-			accessModifier: 'public',
-			members: [],
-			indent: 1
-		};
-		let members = getObjectProperties(jsonObject, 1);
-		baseObject.members = members;
-		closeDialog();
 	}
 
 	function getObjectProperties(obj: any | undefined, indent: number) {
@@ -221,8 +214,11 @@
 </script>
 
 <div class="h-screen bg-slate-100 relative">
-	<header bind:this={header} class=" border-b border-b-neutral-400 shadow-md flex bg-white h-20 px-2 md:px-4 lg:px-16 xl:px-20">
-		<NavigationMenu/>
+	<header
+		bind:this={header}
+		class=" border-b border-b-neutral-400 shadow-md flex bg-white h-20 px-2 md:px-4 lg:px-16 xl:px-20"
+	>
+		<NavigationMenu bind:language />
 		<div class="mx-auto my-auto flex space-x-2">
 			<Menu>
 				<span slot="title">
@@ -304,7 +300,7 @@
 		</div>
 	{:else}
 		<div
-			class="grid grid-cols-2 gap-x-2 md:gap-x-4 lg:gap-x-8 xl:gap-x-16  absolute left-0 right-0 bottom-0 p-2 md:px-4 lg:px-16 xl:px-20"
+			class="grid grid-cols-2 gap-x-2 md:gap-x-4 lg:gap-x-8 xl:gap-x-16 absolute left-0 right-0 bottom-0 p-2 md:px-4 lg:px-16 xl:px-20"
 			style="top: {headerHeight}px;"
 		>
 			<div
@@ -316,58 +312,59 @@
 				<ObjectMemberPresenter property={baseObject} on:selectionchanged={handleSelectionChanged} />
 			</div>
 
-			<div class="overflow-y-scroll border border-slate-300 shadow-sm
-			bg-white			
-			">
+			<div
+				class="overflow-y-scroll border border-slate-300 shadow-sm
+			bg-white
+			"
+			>
 				{#if contextObject}
 					<div class="flex-grow">
-						<PropertyEntryInput bind:value={contextObject.name} label="Name" />
+						<div class="p-2 space-y-1 divide-y divide-gray-300">
+							<PropertyEntryInput
+								bind:value={contextObject.name}
+								label="Name"
+								on:change={handleBaseObjectChanged}
+							/>
+							<DropDownButton
+								size="sm"
+								bind:value={contextObject.dataType}
+								disabled={contextObject === baseObject}
+								labelText="Data Type"
+								labelPosition="left"
+							>
+								<option value="string">String</option>
+								<option value="DateTime">Date</option>
+								<option value="bool">Boolean</option>
+								<option value="int">Integer</option>
+								<option value="long">Long</option>
+								<option value="double">Double</option>
+								<option value="object">Object</option>
+							</DropDownButton>
+							<DropDownButton
+								bind:value={contextObject.accessModifier}
+								labelText="Access Modifier"
+								size="sm"
+								labelPosition="left"
+								on:change={handleBaseObjectChanged}
+							>
+								<option value="public">Public</option>
+								<option value="private">Private</option>
+							</DropDownButton>
 
-						<PropertyEntryDropDown
-							disabled={contextObject === baseObject}
-							label="Data Type"
-							bind:value={contextObject.dataType}
-							on:change={() => (baseObject = baseObject)}
-						>
-							<option value="string">String</option>
-							<option value="DateTime">Date</option>
-							<option value="bool">Boolean</option>
-							<option value="int">Integer</option>
-							<option value="long">Long</option>
-							<option value="double">Double</option>
-							<option value="object">Object</option>
-						</PropertyEntryDropDown>
-						<PropertyEntryDropDown
-							label="Access Modifier"
-							bind:value={contextObject.accessModifier}
-						>
-							<option value="public">Public</option>
-							<option value="private">Private</option>
-						</PropertyEntryDropDown>
-						<div class="px-2 border-b border-b-slate-500 text-sm py-[0.15rem]">
-							<label class="space-x-1">
-								<input
-									type="checkbox"
-									bind:checked={contextObject.nullable}
-									disabled={contextObject === baseObject}
-								/>
-								<span> Nullable </span>
-							</label>
+							<PropertyEntryCheckBox
+								disabled={contextObject === baseObject}
+								labelText="Nullable"
+								bind:checked={contextObject.nullable}
+								on:change={handleBaseObjectChanged}
+							></PropertyEntryCheckBox>
+							<div />
 						</div>
-						<div class="p-2">
-							<div class="h-10">
-								<button
-									type="button"
-									on:click={() => navigator.clipboard.writeText(contextObjectCode ?? '')}
-								>
-									<i class="bi bi-clipboard"></i>
-									<span> Copy Code </span>
-								</button>
+
+						{#if baseObjectCode}
+							<div class="p-2">
+								<CodePresenter {language} codeText={baseObjectCode} />
 							</div>
-							<code class="block whitespace-pre">
-								{contextObjectCode}
-							</code>
-						</div>
+						{/if}
 					</div>
 				{/if}
 			</div>

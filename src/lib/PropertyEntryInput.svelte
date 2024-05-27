@@ -14,11 +14,7 @@
 <div class="grid grid-cols-2 group text-sm">
 	<label
 		for={id}
-		class="border px-1 border-slate-600 
-		group-focus-within:bg-blue-600/30
-		group-focus-within:text-blue-100
-		flex transition-all ease-out duration-300		
-		 "
+		class=" text-slate-800"
 	>
 		<span class="my-auto">
 			{label}
@@ -29,9 +25,10 @@
 		{disabled}
 		type="text"
 		bind:value
-		class="border border-slate-500  peer bg-stone-800 text-stone-300 focus:text-slate-50
-		focus:outline-none
-		 px-1 py-[0.15rem] transition-all ease-out duration-300 focus:ring"
+		class="  peer rounded outline-none focus:outline-none
+				bg-slate-950 text-slate-50 focus:bg-slate-800
+				focus:ring ring-slate-950/10 
+				px-2 py-1 transition-all ease-out duration-300 "
 		on:change
 	/>
 </div>

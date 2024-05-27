@@ -3,13 +3,14 @@
 
 	export let menuWidth = 200;
 	let isMenuOpen = false;
+	
 	let menuItems: HTMLDivElement;
 	let menu: HTMLDivElement;
 	let menuButton: HTMLButtonElement;
 	let svgArrow: SVGSVGElement;
 
 	function toggleMenu() {
-		isMenuOpen = !isMenuOpen;		
+		isMenuOpen = !isMenuOpen;
 		if (isMenuOpen) {
 			svgArrow.style.visibility = 'visible';
 		} else {
@@ -20,6 +21,12 @@
 	}
 
 	onMount(() => {
+		let menuButtonWidth = menuButton.clientWidth;
+		menu.style.width = `${menuWidth}px`;
+		let left = menuWidth / 2 - menuButtonWidth / 2;
+		left *= -1;
+		menu.style.left = `${left}px`;
+
 		const buttons = menuItems.querySelectorAll('button');
 		const links = menuItems.querySelectorAll('a');
 		const className = `block w-full space-x-1 px-2 py-1.5 rounded text-left outline-none focus:outline-none
@@ -35,13 +42,9 @@
 			link.addEventListener('click', toggleMenu);
 		}
 	});
-	onMount(() => {
-		let menuButtonWidth = menuButton.clientWidth;
-		menu.style.width = `${menuWidth}px`;
-		let left = menuWidth / 2 - menuButtonWidth / 2;
-		left *= -1;
-		menu.style.left = `${left}px`;
-	});
+	// onMount(() => {
+
+	// });
 </script>
 
 <div class="relative">
@@ -54,7 +57,7 @@
 		class="text-blue-500 font-bold uppercase rounded-2xl
 		bg-transparent hover:bg-blue-500/20
         aria-checked:bg-blue-500 aria-checked:text-blue-50
-		transition-colors ease-in-out duration-300 
+		transition-colors ease-in-out duration-300
 		
         px-4 py-2"
 	>
@@ -77,9 +80,7 @@
 			<polygon points="25,0 0,50 50,50 " fill="currentColor" />
 		</svg>
 	</div>
-	{#if isMenuOpen}
-		<div class="text-center"></div>
-	{/if}
+
 	<div
 		bind:this={menu}
 		class="absolute mt-2 grid border-2
