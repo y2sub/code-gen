@@ -109,10 +109,12 @@
 			dataType: 'object',
 			accessModifier: 'public',
 			members: [],
-			indent: 1
+			indent: 1,
+			typeIndecisive: false
 		};
 		let members = getObjectProperties(jsonObject, 1);
 		baseObject.members = members;
+		contextObject = baseObject;
 		handleBaseObjectChanged();
 		return {
 			isJsonValid: true,
@@ -135,7 +137,6 @@
 	}
 
 	function handleDialogSubmitted(event: Event) {
-		console.clear();
 		event.stopImmediatePropagation();
 		event.stopPropagation();
 		event.preventDefault();
@@ -170,17 +171,27 @@
 		let props = Object.getOwnPropertyNames(obj);
 		for (const propName of props) {
 			const value = obj[propName];
+
 			let dataType = typeof value;
+			if (value === null || value === undefined) {
+				dataType = 'undefined';
+			}
 			let objectMember: ObjectMember = {
 				name: propName,
 				dataType: 'string',
 				accessModifier: 'public',
 				nullable: true,
 				members: undefined,
-				indent
+				indent,
+				typeIndecisive: false
 			};
+
 			if (Array.isArray(value)) {
 				objectMember.dataType = 'list';
+				if (value[0]) {
+					let childMembers = getObjectProperties(value[0], indent + 1);
+					objectMember.members = childMembers;
+				}
 				objectMembers.push(objectMember);
 				continue;
 			}
@@ -196,10 +207,17 @@
 				case 'object':
 					objectMember.dataType = 'object';
 					objectMember.members = getObjectProperties(value, indent + 1);
-				case 'symbol':
+					break;
 				case 'undefined':
+					// probably a string is a better fit for null | undefined in most cases
+					objectMember.dataType = 'string';
+					objectMember.typeIndecisive = true;
+					objectMember.nullable = true;
+					break;
 				case 'function':
+				case 'symbol':
 				default:
+					objectMember.typeIndecisive = true;
 					break;
 			}
 			objectMembers.push(objectMember);
@@ -300,12 +318,15 @@
 		</div>
 	{:else}
 		<div
-			class="grid grid-cols-2 gap-x-2 md:gap-x-4 lg:gap-x-8 xl:gap-x-16 absolute left-0 right-0 bottom-0 p-2 md:px-4 lg:px-16 xl:px-20"
+			class="absolute left-0 right-0 bottom-0 p-2 
+			md:px-4 lg:px-16 xl:px-20
+			flex flex-row space-x-2 md:space-x-4 lg:space-x-10
+			"
 			style="top: {headerHeight}px;"
 		>
 			<div
 				class="overflow-y-scroll border border-slate-300 shadow-sm
-				bg-white
+				bg-white w-full md:w-1/2 lg:w-1/3 flex-shrink-0
 
 			"
 			>
@@ -314,7 +335,7 @@
 
 			<div
 				class="overflow-y-scroll border border-slate-300 shadow-sm
-			bg-white
+			bg-white flex-grow
 			"
 			>
 				{#if contextObject}
@@ -331,6 +352,7 @@
 								disabled={contextObject === baseObject}
 								labelText="Data Type"
 								labelPosition="left"
+								on:change={handleBaseObjectChanged}
 							>
 								<option value="string">String</option>
 								<option value="DateTime">Date</option>
@@ -339,6 +361,7 @@
 								<option value="long">Long</option>
 								<option value="double">Double</option>
 								<option value="object">Object</option>
+								<option value="list">List</option>
 							</DropDownButton>
 							<DropDownButton
 								bind:value={contextObject.accessModifier}

@@ -15,6 +15,9 @@ export function revive(key: string, value: any, context: any) {
 }
 
 export function checkDataType(value: string | number | bigint | any): dataTypes {
+    if (value === null || value === undefined || value === '') {
+        return 'string'
+    }
     const num = Number(value);
     if (!isNaN(num)) {
         if (`${value}`.includes('.')) {
@@ -42,4 +45,5 @@ export type ObjectMember = {
     nullable?: boolean;
     accessModifier: 'public' | 'private';
     indent: number;
+    typeIndecisive:boolean,
 };

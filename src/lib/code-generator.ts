@@ -25,6 +25,8 @@ export function generateComplexProperty(property: ObjectMember, language: Suppor
             return generateCSharpComplexProperty(property);
         case 'TS':
             return generateTypeScriptComplexProperty(property);
+        case 'JS':
+            return generateJavaScriptComplexProperty(property);
         default:
             break;
     }
@@ -43,22 +45,37 @@ function generateCSharpComplexProperty(property: ObjectMember) {
         let name = formatName(member.name);
         let dataType = member.dataType;
         let dataTypeName: string = dataType;
-        if (dataType === 'object') {
-            let childExists = childObjectExists(member, childObjects);
-            if (!childExists.exists) {
-                childObjects.push(member);
-            }
-            dataTypeName = capitalize(childExists.name);
-            // childClasses = childClasses + '\n' + generateCSharpComplexProperty(member);
+        switch (dataType) {
+            case 'object':
+            case 'list':
+                let childExists = childObjectExists(member, childObjects);
+                if (!childExists.exists) {
+                    childObjects.push(member);
+                }
+
+                if (dataType === 'object') {
+                    dataTypeName = capitalize(childExists.name);
+                } else {
+                    dataTypeName = `List<${capitalize(childExists.name)}>`;
+                    // console.log('x', dataTypeName, childExists)
+                }
+                break;
+
+            default:
+                break;
         }
-        let property = `\n[JsonPropertyName("${member.name}")]\n${member.accessModifier} ${dataTypeName}${member.nullable ? '?' : ''} ${name} {get; set;}\n`;
+        let property = `\n\t[JsonPropertyName("${member.name}")]\n\t${member.accessModifier} ${dataTypeName}${member.nullable ? '?' : ''} ${name} { get; set; }\n`;
         props = `${props} ${property}`;
+
+
     }
 
     let childObjectsCode = '';
+
     for (const child of childObjects) {
         childObjectsCode += "\n" + generateCSharpComplexProperty(child);
     }
+
 
     let className = formatName(property.name);
     let code = `${property.accessModifier} class ${className}\n{${props}} \n ${childObjectsCode}`;
@@ -95,21 +112,21 @@ function generateTypeScriptComplexProperty(property: ObjectMember) {
                 dataTypeName = 'string';
                 break;
             case 'list':
-                dataTypeName = 'any[]'
-                break;
             case 'object':
                 let exists = childObjectExists(member, childObjects);
                 if (!exists.exists) {
                     childObjects.push(member);
                 }
-                dataTypeName = capitalize(exists.name);
+                // dataTypeName = 'any[]'
+
+                dataTypeName = dataType === 'object' ? capitalize(exists.name) : `${capitalize(exists.name)}[]`
                 break;
             default:
                 break;
         }
 
-        let property = `\n${name}${member.nullable ? '?' : ''}: ${dataTypeName};`;
-        props = `${props} ${property}`;
+        let property = `\t${name}${member.nullable ? '?' : ''}: ${dataTypeName};\n`;
+        props = `${props}${property}`;
     }
     let typeName = formatName(property.name);
 
@@ -118,9 +135,66 @@ function generateTypeScriptComplexProperty(property: ObjectMember) {
         let childClassCode = generateTypeScriptComplexProperty(child);
         childClasses = `${childClasses}\n${childClassCode}`
     }
-    let code = `export type ${typeName} = {\n${props}\n} ${childClasses}`;
+    let code = `export type ${typeName} = {\n${props}} ${childClasses}`;
     return code;
 }
+
+function generateJavaScriptComplexProperty(property: ObjectMember) {
+    if (!property || !property.members) {
+        return '';
+    }
+
+    let lines: string[] = [`\n/**`, ` * @typedef {Object} ${capitalize(property.name)}`];
+    let childObjects: ObjectMember[] = [];
+    for (const member of property.members) {
+        let name = member.name;
+        let dataType = member.dataType;
+        let dataTypeName: string = '';
+        switch (dataType) {
+            case 'DateTime':
+                dataTypeName = 'Date';
+                break;
+            case 'bool':
+                dataTypeName = 'boolean';
+                break;
+            case 'int':
+            case 'double':
+            case 'long':
+                dataTypeName = 'number';
+                break;
+            case 'string':
+                dataTypeName = 'string';
+                break;
+            case 'list':
+            case 'object':
+                let exists = childObjectExists(member, childObjects);
+                if (!exists.exists) {
+                    childObjects.push(member);
+                }
+                // dataTypeName = 'any[]'
+
+                dataTypeName = dataType === 'object' ? capitalize(exists.name) : `${capitalize(exists.name)}[]`
+                break;
+            default:
+                break;
+        }
+
+        let property = ` * @property {${dataTypeName}} ${member.name}`;
+        lines.push(property);
+    }
+    lines.push(' */\n');
+
+    let childClasses = '';
+    for (const child of childObjects) {
+        let childClassCode = generateJavaScriptComplexProperty(child);
+        childClasses = `${childClasses}\n${childClassCode}`
+    }
+    let code = lines.join('\n');
+    code = ` ${code} ${childClasses}`;
+    return code;
+}
+
+
 
 
 function childObjectExists(object: ObjectMember, children: ObjectMember[]) {
@@ -163,4 +237,3 @@ function compareMembers(left: ObjectMember, right: ObjectMember): boolean {
     return true;
 
 }
-
