@@ -178,7 +178,6 @@ function generateJavaScriptComplexProperty(property: ObjectMember) {
             default:
                 break;
         }
-
         let property = ` * @property {${dataTypeName}} ${member.name}`;
         lines.push(property);
     }

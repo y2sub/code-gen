@@ -3,8 +3,19 @@
 	import ObjectMemberPresenter from '$lib/ObjectMemberPresenter.svelte';
 	import PropertyEntryInput from '$lib/PropertyEntryInput.svelte';
 	import PropertyEntryDropDown from '$lib/PropertyEntryDropDown.svelte';
-	import { checkDataType, maxInt32, revive, type ObjectMember } from '$lib/json-helper';
-	import { generateComplexProperty, type SupportedLanguages } from '$lib/code-generator';
+	import {
+		checkDataType,
+		maxInt32,
+		revive,
+		getValidVariableName,
+		type ObjectMember,
+		getRandomVariableName
+	} from '$lib/json-helper';
+	import {
+		capitalize,
+		generateComplexProperty,
+		type SupportedLanguages
+	} from '$lib/code-generator';
 	import MenuButton from '$lib/MenuButton.svelte';
 	import {
 		ColorTheme,
@@ -17,6 +28,7 @@
 	import DropDownButton from '$lib/DropDownButton.svelte';
 	import PropertyEntryCheckBox from '$lib/PropertyEntryCheckBox.svelte';
 	import CodePresenter from '$lib/CodePresenter.svelte';
+	import type { HTMLTextareaAttributes } from 'svelte/elements';
 
 	let language: SupportedLanguages = 'CS';
 	let isJsonValid = true;
@@ -29,6 +41,7 @@
 	let diag: HTMLDialogElement;
 	let header: HTMLHeadElement;
 	let headerHeight = 0;
+
 	$: {
 		if (header) {
 			headerHeight = header.clientHeight + 1;
@@ -49,23 +62,6 @@
 		}
 	}
 
-	async function handleFileChanged(event: Event) {
-		const input = event.target as HTMLInputElement;
-		if (!input.files || input.files.length === 0) {
-			return;
-		}
-		const file = input.files[0];
-		const json = await file.text();
-		const result = parseJson(json);
-		if (result.isJsonValid) {
-			fireSuccessToast('Json object created');
-		} else {
-			fireErrorToast(result.validationErrorText);
-		}
-
-		input.value = '';
-	}
-
 	function clearJson() {
 		contextObject = undefined;
 		baseObject = undefined;
@@ -73,7 +69,7 @@
 		fireToast('Json object cleared', 'success');
 	}
 
-	function parseJson(jsonString: string) {
+	function parseJson(jsonString: string, baseObjectName: string = 'BaseObject') {
 		jsonString = jsonString.trim();
 
 		let jsonObject: any | undefined = undefined;
@@ -104,7 +100,7 @@
 		}
 
 		baseObject = {
-			name: 'BaseObject',
+			name: baseObjectName,
 			nullable: false,
 			dataType: 'object',
 			accessModifier: 'public',
@@ -122,12 +118,41 @@
 		};
 	}
 
+	// File Upload function
+
+	async function handleFileChanged(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (!input.files || input.files.length === 0) {
+			return;
+		}
+		const file = input.files[0];
+		const json = await file.text();
+		const result = parseJson(json);
+		if (result.isJsonValid) {
+			fireSuccessToast('Json object created');
+		} else {
+			fireErrorToast(result.validationErrorText);
+		}
+
+		input.value = '';
+	}
+
+	// End File  Upload function
+
+	// JsonDialog functipns
+
 	function showDialog() {
 		isJsonValid = true;
 		validationErrorText = '';
 		diag.classList.add('scale-0');
 		diag.showModal();
 		diag.classList.remove('scale-0');
+		const input = diag.querySelector('input#jsonObjectNameInput') as HTMLInputElement;
+		input.value = capitalize(getRandomVariableName());
+		input.ariaInvalid = 'false';
+		const textArea = diag.querySelector('textarea') as HTMLTextAreaElement;
+		textArea.focus();
+		textArea.value = '';
 	}
 	function closeDialog() {
 		diag.classList.add('scale-0');
@@ -141,6 +166,17 @@
 		event.stopPropagation();
 		event.preventDefault();
 		const form = event.target as HTMLFormElement;
+		let nameInput = form.querySelector('input#jsonObjectNameInput') as HTMLInputElement;
+		let name = nameInput.value.trim();
+		let isNameValid = true;
+		if (!name) {
+			nameInput.ariaInvalid = 'true';
+			isNameValid = false;
+		} else {
+			nameInput.ariaInvalid = 'false';
+		}
+
+		name = getValidVariableName(name);
 
 		jsonText = jsonText.trim();
 
@@ -150,11 +186,14 @@
 			validationErrorText = 'Please enter a valid, non empty JSON object';
 			return;
 		}
+		if (!isNameValid) {
+			return;
+		}
 		let data = new FormData(form);
 		let jsonString: string = data.get('json') as string;
 		jsonString = jsonString.trim();
 
-		const result = parseJson(jsonString);
+		const result = parseJson(jsonString, name);
 		if (result.isJsonValid) {
 			closeDialog();
 		} else {
@@ -162,6 +201,8 @@
 			validationErrorText = 'Could not parse text into a valid JSON object';
 		}
 	}
+
+	// end Json Dialog functions
 
 	function getObjectProperties(obj: any | undefined, indent: number) {
 		if (!obj) {
@@ -318,7 +359,7 @@
 		</div>
 	{:else}
 		<div
-			class="absolute left-0 right-0 bottom-0 p-2 
+			class="absolute left-0 right-0 bottom-0 p-2
 			md:px-4 lg:px-16 xl:px-20
 			flex flex-row space-x-2 md:space-x-4 lg:space-x-10
 			"
@@ -411,27 +452,46 @@
 			<span> Load JSON </span>
 		</h3>
 		<div class="grid gap-2 my-4">
-			<textarea
-				aria-invalid={!isJsonValid}
-				name="json"
-				rows="10"
-				placeholder="Paste your JSON object here"
-				class="px-1 py-1 rounded focus:outline-none border
+			<div class="space-y-1">
+				<label for="jsonObjectNameInput" class="text-neutral-800"> Object Name </label>
+				<input
+					name="name"
+					id="jsonObjectNameInput"
+					placeholder="Your JSON object name"
+					required={true}
+					class="block w-full outline-none focus:outline-none peer
+							p-1 rounded
+							focus:ring ring-sky-500/20
+							focus:border-blue-500
+							bg-white border border-neutral-500
+							aria-[invalid='true']:ring-red-600/20 aria-[invalid='true']:border-red-600
+					"
+				/>
+			</div>
+			<div class="space-y-1">
+				<label for="jsonTextArea" class="text-neutral-800"> Json Text </label>
+				<textarea
+					id="jsonTextArea"
+					aria-invalid={!isJsonValid}
+					name="json"
+					rows="10"
+					placeholder="Paste your JSON object here"
+					class="px-1 py-1 rounded focus:outline-none border
 					   border-neutral-500
 					   focus:border-blue-500
-					   bg-white dark:bg-black
+					   bg-white dark:bg-black w-full
 				 
                 ring-sky-600/20 aria-[invalid='true']:ring-red-600/20 aria-[invalid='true']:border-red-600
                 focus:ring peer
                 "
-				bind:value={jsonText}
-			/>
-
-			<div class="text-center invisible peer-aria-[invalid='true']:visible text-sm">
-				<span class="text-red-600 dark:text-amber-600 space-x-2">
-					<i class="bi bi-exclamation-triangle-fill"></i>
-					{validationErrorText}
-				</span>
+					bind:value={jsonText}
+				/>
+				<div class="text-center invisible peer-aria-[invalid='true']:visible text-sm">
+					<span class="text-red-600 dark:text-amber-600 space-x-2">
+						<i class="bi bi-exclamation-triangle-fill"></i>
+						{validationErrorText}
+					</span>
+				</div>
 			</div>
 		</div>
 		<div class="my-4 grid grid-cols-2 gap-x-2">
