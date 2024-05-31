@@ -28,7 +28,6 @@
 	import DropDownButton from '$lib/DropDownButton.svelte';
 	import PropertyEntryCheckBox from '$lib/PropertyEntryCheckBox.svelte';
 	import CodePresenter from '$lib/CodePresenter.svelte';
-	import type { HTMLTextareaAttributes } from 'svelte/elements';
 
 	let language: SupportedLanguages = 'CS';
 	let isJsonValid = true;
@@ -278,6 +277,7 @@
 		class=" border-b border-b-neutral-400 shadow-md flex bg-white h-20 px-2 md:px-4 lg:px-16 xl:px-20"
 	>
 		<NavigationMenu bind:language />
+
 		<div class="mx-auto my-auto flex space-x-2">
 			<!-- <Menu>
 				<span slot="title">
@@ -301,6 +301,15 @@
 				<i class="bi bi-trash"></i>
 				<span> Reset </span></MenuButton
 			>
+		</div>
+		<div class="my-auto">
+			<img
+				src={'/images/' + language.toLowerCase() + '-logo.svg'}
+				alt={language + ' LOGO'}
+				width="48"
+				height="48"
+				class="object-scale-down"				
+			/>
 		</div>
 	</header>
 	<input

@@ -1,7 +1,10 @@
 
 export const maxInt32 = 0x7fffffff;
 
-export function revive(key: string, value: any, context: any) {
+
+//(this: any, key: string, value: any) => any
+
+export function revive(key?: string, value?: any, context?: any): any {
     const source = context;
     const dataType = typeof value
     switch (dataType) {
@@ -10,7 +13,6 @@ export function revive(key: string, value: any, context: any) {
         default:
             break;
     }
-
     return value;
 }
 
